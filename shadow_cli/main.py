@@ -80,6 +80,38 @@ def generate(prompt, model, steps):
     else:
         click.echo(result.stdout)
 
+@cli.group()
+def audio():
+    """Audio generation and manipulation."""
+    pass
+
+@audio.command()
+@click.argument("text")
+@click.option("--voice", default="default", help="Voice ID or name")
+def synth(text, voice):
+    """Synthesize speech from text."""
+    click.echo(f"Synthesizing: '{text}' using voice '{voice}'...")
+    # Logic to call rvc_convert or TTS service goes here
+
+@audio.command()
+@click.argument("input_path")
+@click.option("--target", help="Target voice for conversion")
+def convert(input_path, target):
+    """Convert audio using RVC voice cloning."""
+    click.echo(f"Converting {input_path} to {target}...")
+
+@cli.group()
+def video():
+    """Video generation commands."""
+    pass
+
+@video.command()
+@click.argument("prompt")
+@click.option("--duration", default=5, help="Video duration in seconds")
+def generate(prompt, duration):
+    """Generate a video clip from a prompt."""
+    click.echo(f"Generating {duration}s video for: '{prompt}'...")
+
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('args', nargs=-1, type=click.UNPROCESSED)
 def gemini(args):

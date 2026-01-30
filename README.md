@@ -43,6 +43,9 @@ This will guide you through connecting to your ShadowAI app and configuring your
 
 ### Media & AI
 - `shadow image generate`: Generate images using your local GPU backend.
+- `shadow audio synth`: Synthesize speech from text.
+- `shadow audio convert`: Clone voices using RVC.
+- `shadow video generate`: Create video clips from text prompts.
 
 ### Mobile Sync (Alpha)
 - `shadow push <file>`: (Coming Soon) Send files to your phone.
