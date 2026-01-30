@@ -167,8 +167,58 @@ def ping():
 @click.argument("path")
 def push(path):
     """Push a file or directory to your connected mobile device."""
-    # Placeholder for future implementation
-    click.echo(f"Feature coming soon: Pushing {path} to mobile...")
+    import requests
+
+    # Determine if path is a file or directory
+    is_file = os.path.isfile(path)
+    is_dir = os.path.isdir(path)
+
+    if not is_file and not is_dir:
+        click.echo(f"Error: Path '{path}' not found.", err=True)
+        return
+    
+    # In a real implementation, you'd likely need to zip directories
+    # and handle the upload via the bridge API. For now, we focus on files.
+    if is_dir:
+        click.echo("Pushing directories is not yet supported. Please push files individually.", err=True)
+        return
+
+    # Assume it's a file for now
+    try:
+        # The shadow-bridge API seems to have /api/upload/training-sample and /api/upload/song-audio
+        # For a generic push, we might need a dedicated endpoint or determine file type.
+        # For now, let's assume a generic upload endpoint or use a common one.
+        # A more robust solution would involve determining the file type and selecting endpoint.
+        
+        # For demonstration, let's try hitting a generic-looking upload endpoint if one exists,
+        # or we'll need to investigate shadow-bridge's actual file handling.
+        # Looking at routes/music.py and routes/api.py, there are upload endpoints.
+        # Let's try /api/upload/song-audio as a placeholder for file uploads.
+        
+        # A more correct approach would be to have a dedicated /upload/file endpoint.
+        # For now, we'll simulate the process.
+        
+        # Let's assume a POST request to /api/upload/file with the file content
+        # This requires a specific endpoint to be implemented in ShadowBridge
+        # For now, we'll print a message indicating the intention.
+        
+        click.echo(f"Simulating push for file: {path}...")
+        # Example of how it might work IF an endpoint existed:
+        # with open(path, 'rb') as f:
+        #     files = {'file': (os.path.basename(path), f)}
+        #     response = requests.post("http://localhost:6767/api/upload/file", files=files)
+        #     if response.status_code == 200:
+        #         click.echo(f"Successfully pushed {path}")
+        #     else:
+        #         click.echo(f"Failed to push {path}: {response.text}", err=True)
+        
+        click.echo("Push functionality is a placeholder. Actual implementation requires an API endpoint in ShadowBridge.")
+
+    except FileNotFoundError:
+        click.echo(f"Error: File not found at {path}", err=True)
+    except Exception as e:
+        click.echo(f"An error occurred: {e}", err=True)
+
 
 @cli.command()
 @click.argument("path")

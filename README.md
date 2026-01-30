@@ -48,8 +48,8 @@ This will guide you through connecting to your ShadowAI app and configuring your
 - `shadow video generate`: Create video clips from text prompts.
 
 ### Mobile Sync (Alpha)
-- `shadow push <file>`: (Coming Soon) Send files to your phone.
-- `shadow pull <file>`: (Coming Soon) Retrieve files from your phone.
+- `shadow push <file>`: Push files to your phone (placeholder implementation).
+- `shadow pull <file>`: Pull files from your phone (placeholder implementation).
 
 ## 🔌 Integration
 
