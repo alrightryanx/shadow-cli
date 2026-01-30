@@ -91,14 +91,30 @@ def audio():
 def synth(text, voice):
     """Synthesize speech from text."""
     click.echo(f"Synthesizing: '{text}' using voice '{voice}'...")
-    # Logic to call rvc_convert or TTS service goes here
+    # This calls the Suno API client as a fallback for synthesis
+    suno_cli = os.path.join(SHADOW_BRIDGE_DIR, "scripts", "suno_api_client.py")
+    if os.path.exists(suno_cli):
+        subprocess.run([sys.executable, suno_cli, "generate", text, "--voice", voice])
+    else:
+        click.echo("Error: suno_api_client.py not found.", err=True)
 
 @audio.command()
 @click.argument("input_path")
-@click.option("--target", help="Target voice for conversion")
-def convert(input_path, target):
+@click.option("--model", required=True, help="Voice model ID to use for conversion")
+@click.option("--output", help="Output path for converted audio")
+def convert(input_path, model, output):
     """Convert audio using RVC voice cloning."""
-    click.echo(f"Converting {input_path} to {target}...")
+    rvc_script = os.path.join(SHADOW_BRIDGE_DIR, "scripts", "rvc_convert_audio.py")
+    if not os.path.exists(rvc_script):
+        click.echo(f"Error: Could not find RVC script at {rvc_script}", err=True)
+        return
+
+    cmd = [sys.executable, rvc_script, "--input", input_path, "--model", model]
+    if output:
+        cmd += ["--output", output]
+    
+    click.echo(f"Starting RVC conversion for {input_path}...")
+    subprocess.run(cmd)
 
 @cli.group()
 def video():
@@ -107,10 +123,21 @@ def video():
 
 @video.command()
 @click.argument("prompt")
-@click.option("--duration", default=5, help="Video duration in seconds")
-def generate(prompt, duration):
+@click.option("--duration", default=5, type=int, help="Video duration in seconds")
+@click.option("--output", help="Output path for video")
+def generate(prompt, duration, output):
     """Generate a video clip from a prompt."""
-    click.echo(f"Generating {duration}s video for: '{prompt}'...")
+    video_script = os.path.join(SHADOW_ROOT, "backend", "scripts", "generate_video.py")
+    if not os.path.exists(video_script):
+        click.echo(f"Error: Could not find video generation script at {video_script}", err=True)
+        return
+
+    if not output:
+        output = os.path.join(SHADOW_ROOT, "temp", "cli_output.mp4")
+
+    cmd = [sys.executable, video_script, "--prompt", prompt, "--duration", str(duration), "--output", output]
+    click.echo(f"Starting video generation for: '{prompt}'...")
+    subprocess.run(cmd)
 
 @cli.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument('args', nargs=-1, type=click.UNPROCESSED)
