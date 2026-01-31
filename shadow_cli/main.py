@@ -227,6 +227,176 @@ def pull(path):
     # Placeholder for future implementation
     click.echo(f"Feature coming soon: Pulling {path} from mobile...")
 
+BRIDGE_API = "http://localhost:6767/api"
+
+
+def _api_request(method, path, data=None):
+    """Make an API request to ShadowBridge."""
+    import requests
+    url = f"{BRIDGE_API}{path}"
+    try:
+        if method == "GET":
+            resp = requests.get(url, timeout=10)
+        else:
+            resp = requests.post(url, json=data or {}, timeout=30)
+        return resp.json(), resp.status_code
+    except requests.ConnectionError:
+        click.echo("Error: Cannot reach ShadowBridge. Is it running on port 6767?", err=True)
+        return None, 0
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        return None, 0
+
+
+@cli.group()
+def agent():
+    """Manage autonomous AI agents."""
+    pass
+
+
+@agent.command()
+@click.option("--count", default=5, type=int, help="Number of agents to spawn")
+@click.option("--focus", default="backend-polish",
+              type=click.Choice(["backend-polish", "android-focus", "bridge-focus"]),
+              help="Focus area for agents")
+@click.option("--provider", default="claude", help="CLI provider (claude, gemini, codex)")
+@click.option("--model", default="claude-sonnet-4-20250514", help="Model ID")
+@click.option("--config", default=None, type=click.Path(exists=True),
+              help="JSON file with per-agent configs")
+def start(count, focus, provider, model, config):
+    """Start autonomous agent loop.
+
+    Example: shadow agent start --count 5 --focus backend-polish
+    """
+    configs = None
+    if config:
+        with open(config, "r") as f:
+            configs = json.load(f)
+
+    payload = {
+        "count": count,
+        "focus": focus,
+        "provider": provider,
+        "model": model,
+    }
+    if configs:
+        payload["configs"] = configs
+
+    click.echo(f"Starting {count} autonomous agents (focus: {focus}, provider: {provider})...")
+    data, code = _api_request("POST", "/autonomous/start", payload)
+
+    if data and code == 200:
+        status = data.get("status", {})
+        click.echo(f"Autonomous loop started.")
+        click.echo(f"  Agents: {len(status.get('agents', {}))}")
+        click.echo(f"  Dashboard: http://localhost:6767/agents")
+    elif data:
+        click.echo(f"Failed: {data.get('error', 'Unknown error')}", err=True)
+
+
+@agent.command()
+def stop():
+    """Stop all autonomous agents."""
+    click.echo("Stopping autonomous agents...")
+    data, code = _api_request("POST", "/autonomous/stop")
+    if data and code == 200:
+        click.echo("Autonomous loop stopped.")
+    elif data:
+        click.echo(f"Failed: {data.get('error', 'Unknown error')}", err=True)
+
+
+@agent.command()
+def status():
+    """Show autonomous agent status."""
+    data, code = _api_request("GET", "/autonomous/status")
+    if not data:
+        return
+
+    running = data.get("running", False)
+    paused = data.get("paused", False)
+
+    state = "PAUSED" if paused else ("RUNNING" if running else "STOPPED")
+    click.echo(f"Status: {state}")
+
+    if data.get("uptime"):
+        click.echo(f"Uptime: {data['uptime']}")
+    click.echo(f"Cycles: {data.get('cycle_count', 0)}")
+    click.echo()
+
+    # Agents table
+    agents = data.get("agents", {})
+    if agents:
+        click.echo(f"Agents ({len(agents)}):")
+        click.echo(f"  {'Name':<25} {'Role':<15} {'Provider':<10} {'Status':<10} {'Tasks':<6}")
+        click.echo(f"  {'-'*25} {'-'*15} {'-'*10} {'-'*10} {'-'*6}")
+        for aid, info in agents.items():
+            click.echo(
+                f"  {info.get('name', '?'):<25} "
+                f"{info.get('role', '?'):<15} "
+                f"{info.get('provider', '?'):<10} "
+                f"{info.get('status', '?'):<10} "
+                f"{info.get('tasks_completed', 0):<6}"
+            )
+    else:
+        click.echo("No agents active.")
+
+    click.echo()
+    click.echo(f"Task Queue: {data.get('tasks_pending', 0)} pending, "
+               f"{data.get('tasks_in_progress', 0)} in progress, "
+               f"{data.get('tasks_completed', 0)} completed, "
+               f"{data.get('tasks_failed', 0)} failed")
+
+    # Build history
+    builds = data.get("build_history", [])
+    if builds:
+        click.echo(f"\nBuilds ({len(builds)}):")
+        for b in builds[-5:]:
+            status_icon = "OK" if b.get("success") else "FAIL"
+            click.echo(f"  [{status_icon}] {b.get('build_type', '?')} - "
+                       f"{b.get('duration_seconds', 0):.0f}s - "
+                       f"{b.get('timestamp', '?')}")
+
+
+@agent.command()
+def scan():
+    """Run a code scan to find actionable tasks."""
+    click.echo("Scanning codebase for improvements...")
+    data, code = _api_request("POST", "/autonomous/scan")
+
+    if data and code == 200:
+        click.echo(f"Found {data.get('tasks_found', 0)} tasks:")
+        categories = data.get("categories", {})
+        for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+            click.echo(f"  {cat:<20} {count}")
+
+        repos = data.get("repos", {})
+        click.echo()
+        for repo, count in repos.items():
+            click.echo(f"  {repo}: {count} tasks")
+    elif data:
+        click.echo(f"Scan failed: {data.get('error', 'Unknown')}", err=True)
+
+
+@agent.command()
+def pause():
+    """Pause autonomous task assignment (agents stay alive)."""
+    data, code = _api_request("POST", "/autonomous/pause")
+    if data and code == 200:
+        click.echo("Autonomous loop paused. Agents are idle.")
+    elif data:
+        click.echo(f"Failed: {data.get('error', 'Unknown error')}", err=True)
+
+
+@agent.command()
+def resume():
+    """Resume autonomous task assignment."""
+    data, code = _api_request("POST", "/autonomous/resume")
+    if data and code == 200:
+        click.echo("Autonomous loop resumed.")
+    elif data:
+        click.echo(f"Failed: {data.get('error', 'Unknown error')}", err=True)
+
+
 def main():
     cli()
 
